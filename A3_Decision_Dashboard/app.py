@@ -11,15 +11,63 @@ st.set_page_config(
 )
 
 # --------------------------------------------------
-# LOAD DATA (shared dataset at repo root)
+# OPTIONAL DATA UPLOAD (Option B)
+# --------------------------------------------------
+st.sidebar.header("📂 Data Input")
+
+uploaded_file = st.sidebar.file_uploader(
+    "Upload sales CSV (optional)",
+    type=["csv"],
+    help="If no file is uploaded, the default sales_data.csv is used"
+)
+
+REQUIRED_COLUMNS = [
+    "Order Date",
+    "Sales",
+    "Profit",
+    "Discount",
+    "Region",
+    "Category",
+    "Sub-Category",
+    "State",
+    "Order ID"
+]
+
+# --------------------------------------------------
+# LOAD DATA (repo-root dataset fallback)
 # --------------------------------------------------
 @st.cache_data
-def load_data():
-    df = pd.read_csv("sales_data.csv", encoding="latin1")
-    df["Order Date"] = pd.to_datetime(df["Order Date"])
+def load_data(uploaded_file=None):
+    if uploaded_file is not None:
+        df = pd.read_csv(uploaded_file, encoding="latin1")
+    else:
+        df = pd.read_csv("sales_data.csv", encoding="latin1")
     return df
 
-df = load_data()
+df = load_data(uploaded_file)
+
+# --------------------------------------------------
+# SCHEMA VALIDATION (Option B core)
+# --------------------------------------------------
+missing_cols = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+
+if missing_cols:
+    st.title("📊 Sales Decision Dashboard")
+    st.caption("Executive view focused on actions, risks, and priorities")
+
+    st.error("❌ Uploaded dataset does not match the required structure.")
+
+    st.markdown("### Missing columns:")
+    for col in missing_cols:
+        st.markdown(f"- `{col}`")
+
+    st.markdown("### Expected columns:")
+    st.code(", ".join(REQUIRED_COLUMNS))
+
+    st.stop()
+
+# Safe conversions
+df["Order Date"] = pd.to_datetime(df["Order Date"])
 
 # --------------------------------------------------
 # HEADER
@@ -46,7 +94,6 @@ st.divider()
 # --------------------------------------------------
 # DECISION VIEW — 2x2 GRID
 # --------------------------------------------------
-
 c1, c2 = st.columns(2)
 
 # --------------------------------------------------
