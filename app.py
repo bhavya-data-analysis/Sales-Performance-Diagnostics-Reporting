@@ -10,26 +10,26 @@ st.set_page_config(page_title="Sales Driver Dashboard (Superstore)", layout="wid
 # ----------------------------
 def load_data(uploaded_file=None):
     if uploaded_file is not None:
-        # Superstore files often need latin1
-        df = pd.read_csv(uploaded_file, encoding="latin1")
+        try:
+            df = pd.read_csv(uploaded_file, encoding="latin1")
+            if df.empty:
+                raise ValueError("Uploaded file is empty")
+        except Exception:
+            # Fallback to default demo data
+            df = pd.read_csv("superstore_sales.csv", encoding="latin1")
     else:
-        # Default local file name (keep in same folder)
         df = pd.read_csv("superstore_sales.csv", encoding="latin1")
 
     # Parse dates
     df["Order Date"] = pd.to_datetime(df["Order Date"], errors="coerce")
     df["Ship Date"] = pd.to_datetime(df["Ship Date"], errors="coerce")
 
-    # Basic cleanup
+    # Numeric cleanup
+    for col in ["Sales", "Profit", "Discount", "Quantity"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
     df = df.dropna(subset=["Order Date"])
-    df["Sales"] = pd.to_numeric(df["Sales"], errors="coerce").fillna(0.0)
-    df["Profit"] = pd.to_numeric(df["Profit"], errors="coerce").fillna(0.0)
-    df["Discount"] = pd.to_numeric(df["Discount"], errors="coerce").fillna(0.0)
-    df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0)
-
-    # Some files have blank/NaN postal codes; keep as-is
     return df
-
 
 def kpi_block(df_cur, df_prev):
     def safe_pct_change(cur, prev):
