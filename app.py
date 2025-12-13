@@ -28,8 +28,41 @@ def load_data(uploaded_file):
     else:
         df = pd.read_csv("superstore_sales.csv", encoding="latin1")
 
-    df["Order Date"] = pd.to_datetime(df["Order Date"])
-    return df
+    # --- Normalize column names (SAFE, NON-DESTRUCTIVE) ---
+    df.columns = df.columns.str.strip()
+
+    # --- Required schema for this dashboard ---
+    REQUIRED_COLUMNS = {
+        "Order Date",
+        "Sales",
+        "Profit",
+        "Discount",
+        "Region",
+        "Category",
+        "Sub-Category",
+        "State",
+        "Order ID"
+    }
+
+    missing_cols = REQUIRED_COLUMNS - set(df.columns)
+
+    if missing_cols:
+        st.error(
+            "❌ Uploaded dataset does not match the required sales data structure.\n\n"
+            f"Missing columns: {', '.join(sorted(missing_cols))}\n\n"
+            "Expected columns include:\n"
+            "Order Date, Sales, Profit, Discount, Region, Category, Sub-Category, State, Order ID"
+        )
+        st.stop()
+
+    # --- Type enforcement ---
+    df["Order Date"] = pd.to_datetime(df["Order Date"], errors="coerce")
+
+    for col in ["Sales", "Profit", "Discount"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df.dropna(subset=["Order Date"])
+
 
 # --------------------------------------------------
 # SIDEBAR
