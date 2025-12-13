@@ -53,12 +53,19 @@ def load_uploaded_data(file):
 # --------------------------------------------------
 # SCHEMA VALIDATION + MAPPING
 # --------------------------------------------------
+REQUIRED_COLUMNS = [
+    "Order Date", "Sales", "Profit", "Discount",
+    "Region", "Category", "Sub-Category", "State", "Order ID"
+]
+
 def schema_mapper(raw_df):
     missing = [c for c in REQUIRED_COLUMNS if c not in raw_df.columns]
 
+    # ✅ Case 1: No mapping needed
     if not missing:
         return raw_df, True
 
+    # ❌ Case 2: Mapping required
     st.error("❌ Uploaded dataset does not match the required structure.")
     st.markdown("### 🔧 Map your columns to continue")
 
@@ -68,7 +75,7 @@ def schema_mapper(raw_df):
         mapping[req_col] = st.selectbox(
             f"Select column for **{req_col}**",
             options=["— Select —"] + list(raw_df.columns),
-            key=req_col
+            key=f"map_{req_col}"
         )
 
     if st.button("✅ Apply Mapping"):
@@ -79,29 +86,39 @@ def schema_mapper(raw_df):
         rename_dict = {v: k for k, v in mapping.items()}
         raw_df = raw_df.rename(columns=rename_dict)
 
-    NUMERIC_COLS = ["Sales", "Profit", "Discount"]
+        # --------------------------------------------------
+        # NUMERIC COLUMN CLEANING
+        # --------------------------------------------------
+        NUMERIC_COLS = ["Sales", "Profit", "Discount"]
 
-for col in NUMERIC_COLS:
-    df[col] = (
-        df[col]
-        .astype(str)
-        .str.replace(",", "", regex=False)
-        .str.replace("$", "", regex=False)
-        .str.replace("₹", "", regex=False)
-    )
-    df[col] = pd.to_numeric(df[col], errors="coerce")
+        for col in NUMERIC_COLS:
+            raw_df[col] = (
+                raw_df[col]
+                .astype(str)
+                .str.replace(",", "", regex=False)
+                .str.replace("$", "", regex=False)
+                .str.replace("₹", "", regex=False)
+            )
+            raw_df[col] = pd.to_numeric(raw_df[col], errors="coerce")
 
-if df[NUMERIC_COLS].isna().any().any():
-    st.error("❌ One or more numeric columns contain invalid values after mapping.")
-    st.stop()
-    try:
-            raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
-    except Exception:
-            st.error("Order Date could not be parsed as a date.")
+        if raw_df[NUMERIC_COLS].isna().any().any():
+            st.error("❌ One or more numeric columns contain invalid values after mapping.")
             st.stop()
 
-    return raw_df, True
+        # --------------------------------------------------
+        # DATE PARSING
+        # --------------------------------------------------
+        try:
+            raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
+        except Exception:
+            st.error("❌ Order Date could not be parsed as a date.")
+            st.stop()
+
+        return raw_df, True
+
+    # Stop execution until mapping is applied
     st.stop()
+
 
 # --------------------------------------------------
 # DATA SELECTION LOGIC
