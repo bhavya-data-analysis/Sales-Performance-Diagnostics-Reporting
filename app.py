@@ -14,7 +14,7 @@ def load_data(uploaded_file=None):
         df = pd.read_csv(uploaded_file, encoding="latin1")
     else:
         # Default local file name (keep in same folder)
-        df = pd.read_csv("Sample - Superstore.csv", encoding="latin1")
+        df = pd.read_csv("superstore_sales", encoding="latin1")
 
     # Parse dates
     df["Order Date"] = pd.to_datetime(df["Order Date"], errors="coerce")
