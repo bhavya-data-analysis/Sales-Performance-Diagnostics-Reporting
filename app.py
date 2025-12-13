@@ -26,7 +26,7 @@ def load_data(uploaded_file):
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file, encoding="latin1")
     else:
-        df = pd.read_csv("superstore_sales.csv", encoding="latin1")
+        df = pd.read_csv("sales_data.csv", encoding="latin1")
 
     # --- Normalize column names (SAFE, NON-DESTRUCTIVE) ---
     df.columns = df.columns.str.strip()
