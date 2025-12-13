@@ -285,10 +285,10 @@ with tab4:
         st.plotly_chart(fig_bucket, use_container_width=True)
 
 # --------------------------------------------------
-# TAB 5 — AI INSIGHTS
+# TAB 5 — INSIGHTS
 # --------------------------------------------------
 with tab5:
-    st.subheader("🤖 AI-Style Insights & Recommendations")
+    st.subheader("🤖 Insights & Recommendations")
 
     loss_orders = df_f[(df_f["Discount"] >= 0.3) & (df_f["Profit"] < 0)]
 
