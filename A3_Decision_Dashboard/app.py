@@ -101,9 +101,26 @@ def schema_mapper(raw_df):
             )
             raw_df[col] = pd.to_numeric(raw_df[col], errors="coerce")
 
-        if raw_df[NUMERIC_COLS].isna().any().any():
-            st.error("❌ One or more numeric columns contain invalid values after mapping.")
-            st.stop()
+# --------------------------------------------------
+# NUMERIC VALIDATION (Relaxed – Path 2)
+# --------------------------------------------------
+invalid_counts = raw_df[NUMERIC_COLS].isna().sum()
+
+if invalid_counts.any():
+    st.warning(
+        "⚠️ Some rows contain invalid numeric values and were excluded.\n\n"
+        + "\n".join(
+            [f"- **{col}**: {cnt} invalid values"
+             for col, cnt in invalid_counts.items() if cnt > 0]
+        )
+    )
+
+    raw_df = raw_df.dropna(subset=NUMERIC_COLS)
+
+    if raw_df.empty:
+        st.error("❌ No valid rows remain after cleaning numeric fields.")
+        st.stop()
+
 
         # --------------------------------------------------
         # DATE PARSING
