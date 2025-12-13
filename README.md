@@ -124,4 +124,5 @@ This project demonstrates the ability to:
 It reflects an **end-to-end analytics mindset**, not just visualization.
 
 A2 Diagnostic Dashboard link - https://xcompany-ai-sales-dashboard-bdel2x6pwedw8pcqmagvqc.streamlit.app
+
 A3 Decision Dashboard link - https://xcompany-ai-sales-dashboard-dsp5zzmrzjielnpwjfezp4.streamlit.app
