@@ -96,11 +96,11 @@ if df[NUMERIC_COLS].isna().any().any():
     st.stop()
     try:
             raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
-        except Exception:
+    except Exception:
             st.error("Order Date could not be parsed as a date.")
             st.stop()
 
-        return raw_df, True
+    return raw_df, True
 
     st.stop()
 
