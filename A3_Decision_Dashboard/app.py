@@ -94,8 +94,7 @@ for col in NUMERIC_COLS:
 if df[NUMERIC_COLS].isna().any().any():
     st.error("❌ One or more numeric columns contain invalid values after mapping.")
     st.stop()
-
-        try:
+    try:
             raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
         except Exception:
             st.error("Order Date could not be parsed as a date.")
