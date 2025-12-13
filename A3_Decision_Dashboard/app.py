@@ -95,9 +95,6 @@ if df[NUMERIC_COLS].isna().any().any():
     st.error("❌ One or more numeric columns contain invalid values after mapping.")
     st.stop()
 
-
-
-
         try:
             raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
         except Exception:
