@@ -78,67 +78,65 @@ def schema_mapper(raw_df):
             key=f"map_{req_col}"
         )
 
-    if st.button("✅ Apply Mapping"):
-        if "— Select —" in mapping.values():
-            st.warning("Please map all required columns.")
-            st.stop()
-
-        rename_dict = {v: k for k, v in mapping.items()}
-        raw_df = raw_df.rename(columns=rename_dict)
-
-        # --------------------------------------------------
-        # NUMERIC COLUMN CLEANING
-        # --------------------------------------------------
-        NUMERIC_COLS = ["Sales", "Profit", "Discount"]
-
-        for col in NUMERIC_COLS:
-            raw_df[col] = (
-                raw_df[col]
-                .astype(str)
-                .str.replace(",", "", regex=False)
-                .str.replace("$", "", regex=False)
-                .str.replace("₹", "", regex=False)
-            )
-            raw_df[col] = pd.to_numeric(raw_df[col], errors="coerce")
-
-
-        # --------------------------------------------------
-# NUMERIC VALIDATION (Relaxed – Path 2)
-# --------------------------------------------------
-invalid_counts = raw_df[NUMERIC_COLS].isna().sum()
-
-if invalid_counts.any():
-    st.warning(
-        "⚠️ Some rows contain invalid numeric values and were excluded.\n\n"
-        + "\n".join(
-            [f"- **{col}**: {cnt} invalid values"
-             for col, cnt in invalid_counts.items() if cnt > 0]
-        )
-    )
-
-    raw_df = raw_df.dropna(subset=NUMERIC_COLS)
-
-    if raw_df.empty:
-        st.error("❌ No valid rows remain after cleaning numeric fields.")
+    if not st.button("✅ Apply Mapping"):
         st.stop()
 
+    # --------------------------------------------------
+    # APPLY MAPPING
+    # --------------------------------------------------
+    if "— Select —" in mapping.values():
+        st.warning("Please map all required columns.")
+        st.stop()
 
+    rename_dict = {v: k for k, v in mapping.items()}
+    raw_df = raw_df.rename(columns=rename_dict)
 
+    # --------------------------------------------------
+    # NUMERIC COLUMN CLEANING
+    # --------------------------------------------------
+    NUMERIC_COLS = ["Sales", "Profit", "Discount"]
 
+    for col in NUMERIC_COLS:
+        raw_df[col] = (
+            raw_df[col]
+            .astype(str)
+            .str.replace(",", "", regex=False)
+            .str.replace("$", "", regex=False)
+            .str.replace("₹", "", regex=False)
+        )
+        raw_df[col] = pd.to_numeric(raw_df[col], errors="coerce")
 
-        # --------------------------------------------------
-        # DATE PARSING
-        # --------------------------------------------------
-        try:
-            raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
-        except Exception:
-            st.error("❌ Order Date could not be parsed as a date.")
+    # --------------------------------------------------
+    # NUMERIC VALIDATION (Relaxed – Path 2)
+    # --------------------------------------------------
+    invalid_counts = raw_df[NUMERIC_COLS].isna().sum()
+
+    if invalid_counts.any():
+        st.warning(
+            "⚠️ Some rows contain invalid numeric values and were excluded.\n\n"
+            + "\n".join(
+                f"- **{col}**: {cnt} invalid values"
+                for col, cnt in invalid_counts.items() if cnt > 0
+            )
+        )
+
+        raw_df = raw_df.dropna(subset=NUMERIC_COLS)
+
+        if raw_df.empty:
+            st.error("❌ No valid rows remain after cleaning numeric fields.")
             st.stop()
 
-        return raw_df, True
+    # --------------------------------------------------
+    # DATE PARSING
+    # --------------------------------------------------
+    try:
+        raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
+    except Exception:
+        st.error("❌ Order Date could not be parsed as a date.")
+        st.stop()
 
-    # Stop execution until mapping is applied
-    st.stop()
+    return raw_df, True
+
 
 
 # --------------------------------------------------
