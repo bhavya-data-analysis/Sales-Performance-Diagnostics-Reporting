@@ -100,7 +100,7 @@ if df[NUMERIC_COLS].isna().any().any():
             st.error("Order Date could not be parsed as a date.")
             st.stop()
 
-  return raw_df, True
+    return raw_df, True
   st.stop()
 
 # --------------------------------------------------
