@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 # PAGE CONFIG
 # --------------------------------------------------
 st.set_page_config(
-    page_title="X-Company AI Sales Intelligence",
+    page_title="X-Company Sales Intelligence",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -123,7 +123,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🧠 Product Intelligence",
     "🌍 Geo Performance",
     "⚠️ Discount Risk",
-    "🤖 AI Insights"
+    "🤖 Insights"
 ])
 
 # --------------------------------------------------
