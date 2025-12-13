@@ -356,7 +356,13 @@ with tab4:
     st.markdown("**High Discount + Negative Profit Orders (Potential Leak List)**")
     leak_df = df_f[(df_f["Discount"] >= 0.3) & (df_f["Profit"] < 0)].copy()
     show_cols = ["Order Date", "Order ID", "Category", "Sub-Category", "Product Name", "Sales", "Discount", "Profit", "Region", "State"]
-    st.dataframe(leak_df[show_cols].sort_values("Profit").head(50), use_container_width=True)
+    if not leak_df.empty:
+    st.dataframe(
+        leak_df[show_cols].sort_values("Profit").head(50),
+        use_container_width=True
+    )
+else:
+    st.info("No high-discount, negative-profit orders found for the selected filters.")
 
 with tab5:
     st.subheader("🧠 Insights & Recommendations")
@@ -385,6 +391,10 @@ with tab5:
         f"Recommended next steps include tightening discounting where it produces negative margin, prioritizing high-profit sub-categories, "
         f"and monitoring weekly movement in sales and profit together to identify early warning signals."
     )
+    if isinstance(narrative, str) and narrative.strip():
     st.text_area("Narrative", narrative, height=180)
+else:
+    st.info("Narrative summary is not available for the selected filters.")
+
 
 st.caption(f"Comparison previous period: {prev_start.date()} to {prev_end.date()} (same length as your selected range).")
