@@ -15,10 +15,8 @@ st.set_page_config(
 # --------------------------------------------------
 # HEADER
 # --------------------------------------------------
-st.title("🚀 X-Company AI Sales Intelligence Dashboard")
-st.caption(
-    "Explaining *why* sales change — trends • product mix • geography • discount risk • AI insights"
-)
+st.title("Sales Performance & Profit Risk Dashboard")
+st.caption("Interactive analysis of sales trends, discounts, and profitability")
 
 # --------------------------------------------------
 # DATA LOADING
