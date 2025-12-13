@@ -1,4 +1,8 @@
 # 📊 X-Company Sales Analytics Dashboard  
+A2 Diagnostic Dashboard link - https://xcompany-ai-sales-dashboard-bdel2x6pwedw8pcqmagvqc.streamlit.app
+
+A3 Decision Dashboard link - https://xcompany-ai-sales-dashboard-dsp5zzmrzjielnpwjfezp4.streamlit.app
+
 **Diagnostic & Decision Intelligence**
 
 This project presents an end-to-end sales analytics solution built to move from **analysis to action**.  
