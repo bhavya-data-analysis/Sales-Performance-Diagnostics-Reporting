@@ -356,13 +356,15 @@ with tab4:
     st.markdown("**High Discount + Negative Profit Orders (Potential Leak List)**")
     leak_df = df_f[(df_f["Discount"] >= 0.3) & (df_f["Profit"] < 0)].copy()
     show_cols = ["Order Date", "Order ID", "Category", "Sub-Category", "Product Name", "Sales", "Discount", "Profit", "Region", "State"]
-    if not leak_df.empty:
+    
+if not leak_df.empty:
     st.dataframe(
         leak_df[show_cols].sort_values("Profit").head(50),
         use_container_width=True
     )
 else:
     st.info("No high-discount, negative-profit orders found for the selected filters.")
+
 
 with tab5:
     st.subheader("🧠 Insights & Recommendations")
