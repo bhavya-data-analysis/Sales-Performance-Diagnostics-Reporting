@@ -1,295 +1,286 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 
-# ===============================
-# Page config
-# ===============================
+# --------------------------------------------------
+# PAGE CONFIG
+# --------------------------------------------------
 st.set_page_config(
     page_title="X-Company AI Sales Intelligence",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# ===============================
-# Styling (light futuristic vibe)
-# ===============================
-st.markdown("""
-<style>
-h1, h2, h3 { letter-spacing: 0.5px; }
-.metric-label { font-size: 14px; color: #999; }
-</style>
-""", unsafe_allow_html=True)
+# --------------------------------------------------
+# HEADER
+# --------------------------------------------------
+st.title("🚀 X-Company AI Sales Intelligence Dashboard")
+st.caption(
+    "Explaining *why* sales change — trends • product mix • geography • discount risk • AI insights"
+)
 
-# ===============================
-# Helpers
-# ===============================
-def fmt_money(x):
-    if abs(x) >= 1_000_000:
-        return f"${x/1_000_000:.2f}M"
-    if abs(x) >= 1_000:
-        return f"${x/1_000:.1f}K"
-    return f"${x:,.0f}"
-
-def load_data(uploaded=None):
-    if uploaded is not None:
-        try:
-            df = pd.read_csv(uploaded, encoding="latin1")
-            if df.empty:
-                raise ValueError
-        except Exception:
-            df = pd.read_csv("superstore_sales.csv", encoding="latin1")
+# --------------------------------------------------
+# DATA LOADING
+# --------------------------------------------------
+@st.cache_data
+def load_data(uploaded_file):
+    if uploaded_file is not None:
+        df = pd.read_csv(uploaded_file, encoding="latin1")
     else:
         df = pd.read_csv("superstore_sales.csv", encoding="latin1")
 
-    df["Order Date"] = pd.to_datetime(df["Order Date"], errors="coerce")
-    for c in ["Sales", "Profit", "Discount", "Quantity"]:
-        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+    df["Order Date"] = pd.to_datetime(df["Order Date"])
+    return df
 
-    return df.dropna(subset=["Order Date"])
-
-# ===============================
-# Sidebar
-# ===============================
+# --------------------------------------------------
+# SIDEBAR
+# --------------------------------------------------
 st.sidebar.header("📂 Data Input")
-uploaded = st.sidebar.file_uploader(
+
+uploaded_file = st.sidebar.file_uploader(
     "Upload company sales CSV (optional)",
     type=["csv"]
 )
 
-df = load_data(uploaded)
+df = load_data(uploaded_file)
 
 st.sidebar.header("🎛 Filters")
 
-date_min, date_max = df["Order Date"].min(), df["Order Date"].max()
 date_range = st.sidebar.date_input(
     "Order Date Range",
-    [date_min, date_max],
-    min_value=date_min,
-    max_value=date_max
+    [df["Order Date"].min(), df["Order Date"].max()]
 )
 
 regions = st.sidebar.multiselect(
     "Region",
-    sorted(df["Region"].unique()),
-    default=sorted(df["Region"].unique())
+    df["Region"].unique(),
+    default=df["Region"].unique()
 )
 
+# --------------------------------------------------
+# APPLY FILTERS
+# --------------------------------------------------
 df_f = df[
     (df["Order Date"] >= pd.to_datetime(date_range[0])) &
     (df["Order Date"] <= pd.to_datetime(date_range[1])) &
     (df["Region"].isin(regions))
-].copy()
+]
 
-# ===============================
-# Header
-# ===============================
-st.title("🤖 X-Company AI Sales Intelligence")
-st.caption(
-    "An AI-inspired analytics dashboard explaining **why revenue and profit change** "
-    "across time, products, regions, and discount behavior."
-)
-
-# ===============================
-# KPIs
-# ===============================
-sales = df_f["Sales"].sum()
-profit = df_f["Profit"].sum()
+# --------------------------------------------------
+# KPI METRICS
+# --------------------------------------------------
+total_sales = df_f["Sales"].sum()
+total_profit = df_f["Profit"].sum()
 orders = df_f["Order ID"].nunique()
-aov = sales / orders if orders else 0
-avg_disc = df_f["Discount"].mean()
+avg_discount = df_f["Discount"].mean() * 100
 
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Revenue", fmt_money(sales))
-k2.metric("Profit", fmt_money(profit))
-k3.metric("Orders", f"{orders:,}")
-k4.metric("Avg Order Value", fmt_money(aov))
-k5.metric("Avg Discount", f"{avg_disc:.1%}")
+k1, k2, k3, k4 = st.columns(4)
+
+k1.metric("💰 Total Sales", f"${total_sales:,.0f}")
+k2.metric("📈 Total Profit", f"${total_profit:,.0f}")
+k3.metric("🧾 Orders", f"{orders:,}")
+k4.metric("🏷 Avg Discount", f"{avg_discount:.1f}%")
 
 st.divider()
 
-# ===============================
+# --------------------------------------------------
 # TABS
-# ===============================
-tabs = st.tabs([
-    "📈 Trends",
-    "🧩 Product Intelligence",
-    "🗺 Geo Performance",
-    "💥 Discount & Risk",
-    "🧠 AI Insights"
+# --------------------------------------------------
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📉 Trends",
+    "🧠 Product Intelligence",
+    "🌍 Geo Performance",
+    "⚠️ Discount Risk",
+    "🤖 AI Insights"
 ])
 
-# ===============================
-# 📈 TRENDS (2x2 GRID)
-# ===============================
-with tabs[0]:
-    st.subheader("📈 Performance Trends")
+# --------------------------------------------------
+# TAB 1 — TRENDS
+# --------------------------------------------------
+with tab1:
+    st.subheader("📉 Sales & Profit Trends")
 
-    monthly = (
-        df_f.set_index("Order Date")
-        .resample("M")
-        .agg({"Sales": "sum", "Profit": "sum", "Order ID": "nunique"})
-        .rename(columns={"Order ID": "Orders"})
+    trend = (
+        df_f
+        .groupby(pd.Grouper(key="Order Date", freq="M"))
+        .agg(Sales=("Sales", "sum"), Profit=("Profit", "sum"))
+        .reset_index()
     )
 
     c1, c2 = st.columns(2)
 
     with c1:
-        fig, ax = plt.subplots()
-        ax.plot(monthly.index, monthly["Sales"], color="#00b4d8", linewidth=2)
-        ax.set_title("Revenue Trend")
-        st.pyplot(fig, clear_figure=True)
-
-    with c2:
-        fig, ax = plt.subplots()
-        ax.plot(monthly.index, monthly["Profit"], color="#2ec4b6", linewidth=2)
-        ax.set_title("Profit Trend")
-        st.pyplot(fig, clear_figure=True)
-
-    c3, c4 = st.columns(2)
-
-    with c3:
-        fig, ax = plt.subplots()
-        ax.plot(monthly.index, monthly["Orders"], color="#ff9f1c", linewidth=2)
-        ax.set_title("Orders Trend")
-        st.pyplot(fig, clear_figure=True)
-
-    with c4:
-        fig, ax = plt.subplots()
-        ax.plot(monthly.index, monthly["Sales"] / monthly["Orders"], color="#9b5de5")
-        ax.set_title("Avg Order Value Trend")
-        st.pyplot(fig, clear_figure=True)
-
-# ===============================
-# 🧩 PRODUCT INTELLIGENCE
-# ===============================
-with tabs[1]:
-    st.subheader("🧩 Product Intelligence")
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-        cat_sales = df_f.groupby("Category")["Sales"].sum().sort_values()
-        fig, ax = plt.subplots()
-        cat_sales.plot(kind="barh", ax=ax, color="#4361ee")
-        ax.set_title("Revenue by Category")
-        st.pyplot(fig, clear_figure=True)
-
-    with c2:
-        sub_sales = (
-            df_f.groupby("Sub-Category")["Sales"]
-            .sum()
-            .sort_values()
-            .tail(10)
+        fig_sales = px.line(
+            trend,
+            x="Order Date",
+            y="Sales",
+            title="Monthly Sales Trend",
+            markers=True
         )
-        fig, ax = plt.subplots()
-        sub_sales.plot(kind="barh", ax=ax, color="#4cc9f0")
-        ax.set_title("Top Sub-Categories")
-        st.pyplot(fig, clear_figure=True)
+        st.plotly_chart(fig_sales, use_container_width=True)
 
-# ===============================
-# 🗺 GEO PERFORMANCE
-# ===============================
-with tabs[2]:
-    st.subheader("🗺 Regional & State Performance")
+    with c2:
+        fig_profit = px.line(
+            trend,
+            x="Order Date",
+            y="Profit",
+            title="Monthly Profit Trend",
+            markers=True
+        )
+        st.plotly_chart(fig_profit, use_container_width=True)
+
+# --------------------------------------------------
+# TAB 2 — PRODUCT INTELLIGENCE
+# --------------------------------------------------
+with tab2:
+    st.subheader("🧠 Product Mix Performance")
 
     c1, c2 = st.columns(2)
 
     with c1:
-        reg_sales = df_f.groupby("Region")["Sales"].sum().sort_values()
-        fig, ax = plt.subplots()
-        reg_sales.plot(kind="barh", ax=ax, color="#f72585")
-        ax.set_title("Revenue by Region")
-        st.pyplot(fig, clear_figure=True)
+        cat_sales = (
+            df_f.groupby("Category")["Sales"]
+            .sum()
+            .reset_index()
+            .sort_values("Sales", ascending=False)
+        )
+        fig_cat = px.bar(
+            cat_sales,
+            x="Sales",
+            y="Category",
+            orientation="h",
+            title="Sales by Category",
+            color="Sales",
+            color_continuous_scale="Blues"
+        )
+        st.plotly_chart(fig_cat, use_container_width=True)
 
     with c2:
-        state_profit = (
-            df_f.groupby("State")["Profit"]
+        subcat_profit = (
+            df_f.groupby("Sub-Category")["Profit"]
             .sum()
-            .sort_values()
+            .reset_index()
+            .sort_values("Profit")
             .head(10)
         )
-        fig, ax = plt.subplots()
-        state_profit.plot(kind="barh", ax=ax, color="#b5179e")
-        ax.set_title("Worst States by Profit")
-        st.pyplot(fig, clear_figure=True)
+        fig_sub = px.bar(
+            subcat_profit,
+            x="Profit",
+            y="Sub-Category",
+            orientation="h",
+            title="Worst Sub-Categories by Profit",
+            color="Profit",
+            color_continuous_scale="Reds"
+        )
+        st.plotly_chart(fig_sub, use_container_width=True)
 
-# ===============================
-# 💥 DISCOUNT & RISK
-# ===============================
-with tabs[3]:
-    st.subheader("💥 Discount Risk Analysis")
+# --------------------------------------------------
+# TAB 3 — GEO PERFORMANCE
+# --------------------------------------------------
+with tab3:
+    st.subheader("🌍 Regional Performance")
 
     c1, c2 = st.columns(2)
 
     with c1:
-        fig, ax = plt.subplots()
-        ax.scatter(
-            df_f["Discount"],
-            df_f["Profit"],
-            s=df_f["Sales"] / 120,
-            alpha=0.5,
-            color="#ef233c"
+        reg_sales = df_f.groupby("Region")["Sales"].sum().reset_index()
+        fig_reg = px.bar(
+            reg_sales,
+            x="Region",
+            y="Sales",
+            title="Sales by Region",
+            color="Sales",
+            color_continuous_scale="Viridis"
         )
-        ax.set_title("Discount vs Profit (size = revenue)")
-        ax.set_xlabel("Discount")
-        ax.set_ylabel("Profit")
-        st.pyplot(fig, clear_figure=True)
+        st.plotly_chart(fig_reg, use_container_width=True)
 
     with c2:
-        buckets = pd.cut(
+        state_sales = (
+            df_f.groupby("State")["Sales"]
+            .sum()
+            .reset_index()
+            .sort_values("Sales", ascending=False)
+            .head(10)
+        )
+        fig_state = px.bar(
+            state_sales,
+            x="Sales",
+            y="State",
+            orientation="h",
+            title="Top 10 States by Sales"
+        )
+        st.plotly_chart(fig_state, use_container_width=True)
+
+# --------------------------------------------------
+# TAB 4 — DISCOUNT RISK
+# --------------------------------------------------
+with tab4:
+    st.subheader("⚠️ Discount vs Profit Risk")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        fig_scatter = px.scatter(
+            df_f,
+            x="Discount",
+            y="Profit",
+            size="Sales",
+            title="Discount vs Profit (Bubble = Sales)",
+            opacity=0.6
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+    with c2:
+        df_f["Discount Bucket"] = pd.cut(
             df_f["Discount"],
             bins=[0, 0.1, 0.2, 0.3, 0.4, 1],
             labels=["0–10%", "10–20%", "20–30%", "30–40%", "40%+"]
         )
-        bucket_profit = df_f.groupby(buckets)["Profit"].sum()
 
-        fig, ax = plt.subplots()
-        bucket_profit.plot(marker="o", ax=ax, color="#ff006e")
-        ax.set_title("Profit by Discount Bucket")
-        st.pyplot(fig, clear_figure=True)
-
-# ===============================
-# 🧠 AI INSIGHTS
-# ===============================
-with tabs[4]:
-    st.subheader("🧠 AI-Generated Business Insights")
-
-    bullets = []
-    recos = []
-
-    if not df_f.empty:
-        bullets.append(
-            f"Revenue leader: **{df_f.groupby('Category')['Sales'].sum().idxmax()}**"
-        )
-        bullets.append(
-            f"Profit drag: **{df_f.groupby('Category')['Profit'].sum().idxmin()}**"
+        bucket_profit = (
+            df_f.groupby("Discount Bucket")["Profit"]
+            .sum()
+            .reset_index()
         )
 
-        loss_rate = ((df_f["Discount"] >= 0.3) & (df_f["Profit"] < 0)).mean() * 100
-        bullets.append(
-            f"High-discount loss exposure: **{loss_rate:.1f}% of orders**"
+        fig_bucket = px.line(
+            bucket_profit,
+            x="Discount Bucket",
+            y="Profit",
+            markers=True,
+            title="Profit by Discount Bucket"
         )
+        st.plotly_chart(fig_bucket, use_container_width=True)
 
-        recos.extend([
-            "Tighten discount controls above 30%, especially in Furniture and Supplies.",
-            "Scale high-margin categories (Technology, Copiers, Accessories).",
-            "Monitor profit alongside revenue — growth without margin signals risk."
-        ])
+# --------------------------------------------------
+# TAB 5 — AI INSIGHTS
+# --------------------------------------------------
+with tab5:
+    st.subheader("🤖 AI-Style Insights & Recommendations")
 
-    for b in bullets:
-        st.markdown(f"- {b}")
+    loss_orders = df_f[(df_f["Discount"] >= 0.3) & (df_f["Profit"] < 0)]
 
-    st.markdown("### Recommended Actions")
-    for r in recos:
-        st.markdown(f"- {r}")
+    st.markdown("### 🔍 Key Findings")
+    st.markdown(f"""
+    • **{len(loss_orders):,} orders** have high discounts (≥30%) with **negative profit**  
+    • Biggest profit leakage occurs in **Tables, Bookcases, Supplies**  
+    • **Technology & Phones** drive the strongest profit growth  
+    """)
 
-    narrative = (
-        "X-Company’s sales performance is driven primarily by category mix and "
-        "discount strategy. While revenue growth is supported by Technology products, "
-        "excessive discounting in low-margin categories introduces material profit risk. "
-        "Optimizing discount thresholds and shifting mix toward high-margin products "
-        "can significantly improve profitability."
-    )
+    st.markdown("### ✅ Recommended Actions")
+    st.markdown("""
+    • Reduce aggressive discounting in low-margin categories  
+    • Protect high-margin products from unnecessary promotions  
+    • Monitor **Sales + Profit + Discount together** weekly  
+    """)
 
-    st.text_area("📄 Executive-ready narrative", narrative, height=160)
+    st.markdown("### 📄 Export-Ready Narrative")
+    narrative = f"""
+X-Company experienced total sales of ${total_sales:,.0f} with profit of ${total_profit:,.0f}
+during the selected period. While sales grew across regions, profitability declined in
+areas with aggressive discounting. Orders with discounts above 30% accounted for a
+disproportionate share of losses. Strategic discount control and focus on high-margin
+products is recommended.
+    """
+    st.text_area("Narrative", narrative, height=200)
