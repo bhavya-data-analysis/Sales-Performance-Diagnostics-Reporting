@@ -101,7 +101,8 @@ def schema_mapper(raw_df):
             )
             raw_df[col] = pd.to_numeric(raw_df[col], errors="coerce")
 
-# --------------------------------------------------
+
+        # --------------------------------------------------
 # NUMERIC VALIDATION (Relaxed – Path 2)
 # --------------------------------------------------
 invalid_counts = raw_df[NUMERIC_COLS].isna().sum()
@@ -120,6 +121,9 @@ if invalid_counts.any():
     if raw_df.empty:
         st.error("❌ No valid rows remain after cleaning numeric fields.")
         st.stop()
+
+
+
 
 
         # --------------------------------------------------
