@@ -101,7 +101,7 @@ if df[NUMERIC_COLS].isna().any().any():
             st.stop()
 
     return raw_df, True
-        st.stop()
+    st.stop()
 
 # --------------------------------------------------
 # DATA SELECTION LOGIC
