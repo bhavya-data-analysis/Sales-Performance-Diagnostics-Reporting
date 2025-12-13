@@ -11,16 +11,8 @@ st.set_page_config(
 )
 
 # --------------------------------------------------
-# OPTIONAL DATA UPLOAD (Option B)
+# REQUIRED SCHEMA
 # --------------------------------------------------
-st.sidebar.header("📂 Data Input")
-
-uploaded_file = st.sidebar.file_uploader(
-    "Upload sales CSV (optional)",
-    type=["csv"],
-    help="If no file is uploaded, the default sales_data.csv is used"
-)
-
 REQUIRED_COLUMNS = [
     "Order Date",
     "Sales",
@@ -34,51 +26,91 @@ REQUIRED_COLUMNS = [
 ]
 
 # --------------------------------------------------
-# LOAD DATA (repo-root dataset fallback)
+# SIDEBAR — DATA INPUT
+# --------------------------------------------------
+st.sidebar.header("📂 Data Input")
+
+uploaded_file = st.sidebar.file_uploader(
+    "Upload sales CSV (optional)",
+    type=["csv"]
+)
+
+# --------------------------------------------------
+# LOAD DEFAULT DATA (repo root)
 # --------------------------------------------------
 @st.cache_data
-def load_data(uploaded_file=None):
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file, encoding="latin1")
-    else:
-        df = pd.read_csv("sales_data.csv", encoding="latin1")
+def load_default_data():
+    df = pd.read_csv("sales_data.csv", encoding="latin1")
+    df["Order Date"] = pd.to_datetime(df["Order Date"])
     return df
 
-df = load_data(uploaded_file)
+# --------------------------------------------------
+# LOAD UPLOADED DATA (raw)
+# --------------------------------------------------
+def load_uploaded_data(file):
+    return pd.read_csv(file, encoding="latin1")
 
 # --------------------------------------------------
-# SCHEMA VALIDATION (Option B core)
+# SCHEMA VALIDATION + MAPPING
 # --------------------------------------------------
-missing_cols = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+def schema_mapper(raw_df):
+    missing = [c for c in REQUIRED_COLUMNS if c not in raw_df.columns]
 
-if missing_cols:
-    st.title("📊 Sales Decision Dashboard")
-    st.caption("Executive view focused on actions, risks, and priorities")
+    if not missing:
+        return raw_df, True
 
     st.error("❌ Uploaded dataset does not match the required structure.")
+    st.markdown("### 🔧 Map your columns to continue")
 
-    st.markdown("### Missing columns:")
-    for col in missing_cols:
-        st.markdown(f"- `{col}`")
+    mapping = {}
 
-    st.markdown("### Expected columns:")
-    st.code(", ".join(REQUIRED_COLUMNS))
+    for req_col in missing:
+        mapping[req_col] = st.selectbox(
+            f"Select column for **{req_col}**",
+            options=["— Select —"] + list(raw_df.columns),
+            key=req_col
+        )
+
+    if st.button("✅ Apply Mapping"):
+        if "— Select —" in mapping.values():
+            st.warning("Please map all required columns.")
+            st.stop()
+
+        rename_dict = {v: k for k, v in mapping.items()}
+        raw_df = raw_df.rename(columns=rename_dict)
+
+        try:
+            raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
+        except Exception:
+            st.error("Order Date could not be parsed as a date.")
+            st.stop()
+
+        return raw_df, True
 
     st.stop()
 
-# Safe conversions
-df["Order Date"] = pd.to_datetime(df["Order Date"])
+# --------------------------------------------------
+# DATA SELECTION LOGIC
+# --------------------------------------------------
+if uploaded_file is not None:
+    raw_df = load_uploaded_data(uploaded_file)
+    df, ready = schema_mapper(raw_df)
+else:
+    df = load_default_data()
+    ready = True
+
+if not ready:
+    st.stop()
 
 # --------------------------------------------------
 # HEADER
 # --------------------------------------------------
 st.title("📊 Sales Decision Dashboard")
 st.caption("Executive view focused on actions, risks, and priorities")
-
 st.divider()
 
 # --------------------------------------------------
-# KPI SNAPSHOT (Decision-level)
+# KPI SNAPSHOT
 # --------------------------------------------------
 total_sales = df["Sales"].sum()
 total_profit = df["Profit"].sum()
@@ -92,13 +124,11 @@ k3.metric("High-Discount Loss Orders", f"{len(loss_orders):,}")
 st.divider()
 
 # --------------------------------------------------
-# DECISION VIEW — 2x2 GRID
+# DECISION GRID (2 × 2)
 # --------------------------------------------------
 c1, c2 = st.columns(2)
 
-# --------------------------------------------------
-# 1️⃣ Category Risk (Where to intervene)
-# --------------------------------------------------
+# 1️⃣ Category Risk
 with c1:
     cat_profit = (
         df.groupby("Category")["Profit"]
@@ -118,9 +148,7 @@ with c1:
     )
     st.plotly_chart(fig_cat, use_container_width=True)
 
-# --------------------------------------------------
 # 2️⃣ Discount Risk Curve
-# --------------------------------------------------
 with c2:
     df["Discount Bucket"] = pd.cut(
         df["Discount"],
@@ -148,9 +176,7 @@ with c2:
 # --------------------------------------------------
 c3, c4 = st.columns(2)
 
-# --------------------------------------------------
-# 3️⃣ Regional Decision Priority
-# --------------------------------------------------
+# 3️⃣ Regional Priority
 with c3:
     region_profit = (
         df.groupby("Region")["Profit"]
@@ -170,9 +196,7 @@ with c3:
     )
     st.plotly_chart(fig_reg, use_container_width=True)
 
-# --------------------------------------------------
-# 4️⃣ Worst Sub-Categories (Cut or Fix)
-# --------------------------------------------------
+# 4️⃣ Worst Sub-Categories
 with c4:
     subcat_loss = (
         df.groupby("Sub-Category")["Profit"]
@@ -196,7 +220,7 @@ with c4:
 st.divider()
 
 # --------------------------------------------------
-# DECISION SUMMARY (Executive-ready)
+# DECISION SUMMARY
 # --------------------------------------------------
 st.subheader("📌 Decision Summary")
 
