@@ -78,6 +78,22 @@ def schema_mapper(raw_df):
 
         rename_dict = {v: k for k, v in mapping.items()}
         raw_df = raw_df.rename(columns=rename_dict)
+NUMERIC_COLS = ["Sales", "Profit", "Discount"]
+
+for col in NUMERIC_COLS:
+    df[col] = (
+        df[col]
+        .astype(str)
+        .str.replace(",", "", regex=False)
+        .str.replace("$", "", regex=False)
+        .str.replace("₹", "", regex=False)
+    )
+    df[col] = pd.to_numeric(df[col], errors="coerce")
+
+if df[NUMERIC_COLS].isna().any().any():
+    st.error("❌ One or more numeric columns contain invalid values after mapping.")
+    st.stop()
+
 
         try:
             raw_df["Order Date"] = pd.to_datetime(raw_df["Order Date"])
